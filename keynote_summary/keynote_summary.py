@@ -3,10 +3,7 @@ from keynote_parser.file_utils import file_reader
 from keynote_parser.codec import IWAFile
 
 #TODO
-# - notes
 # - hash the slides to detect unprinted changes
-
-KEY09 = '/tmp/09-ConditionalIndependence.key' #TEST
 
 class KeynoteFile(object):
     def __init__(self, fname):
@@ -123,7 +120,7 @@ class Slide(object):
 
     class Note(Text):
         def __str__(self):
-            return "**NOTE:**\n%s" % super(Slide.Note, self).__str__()
+            return "**NOTES:**\n%s" % super(Slide.Note, self).__str__()
 
         @property
         def valid(self):
