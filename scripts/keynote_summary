@@ -1,0 +1,3 @@
+#!/usr/local/bin/python
+from keynote_summary.keynote_summary import main
+main()

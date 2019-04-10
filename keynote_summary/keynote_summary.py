@@ -1,4 +1,3 @@
-#!/usr/local/bin/python
 import sys
 from keynote_parser.file_utils import file_reader
 from keynote_parser.codec import IWAFile
