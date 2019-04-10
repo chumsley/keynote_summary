@@ -76,7 +76,7 @@ class Slide(object):
         identifier = self._archives[0]['header']['identifier']
         self.identifier = int(identifier)
         for ar in self._archives:
-            obj = self.Text.build(ar) or self.Equation.build(ar)
+            obj = self.Note.build(ar) or self.Text.build(ar) or self.Equation.build(ar)
             if obj:
                 self._objects.append(obj)
     
@@ -119,8 +119,19 @@ class Slide(object):
             return len(self._text) > 0
 
     class Text(SlideObject):
-        text_attr = 'text'    
+        text_attr = 'text'
 
+    class Note(Text):
+        def __str__(self):
+            return "**NOTE:**\n%s" % super(Slide.Note, self).__str__()
+
+        @property
+        def valid(self):
+            if super(Slide.Note, self).valid:
+                return 'kind' in self._archive['objects'][0] and self._archive['objects'][0]['kind']=='NOTE'
+            else:
+                return False
+        
     class Equation(SlideObject):
         text_attr = '[TSWP.EquationInfoArchive.equation_source_text.equationSourceText]'
 
