@@ -137,7 +137,7 @@ class Slide(object):
                 return False
         
     class Equation(SlideObject):
-        text_attr = '[TSWP.EquationInfoArchive.equation_source_text.equationSourceText]'
+        text_attr = '[TSWP.EquationInfoArchive.equation_source_text]'
 
         def __str__(self):
             return "$%s$" % super(Slide.Equation, self).__str__()
