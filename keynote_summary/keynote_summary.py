@@ -1,4 +1,5 @@
 import sys
+import hashlib
 from keynote_parser.file_utils import file_reader
 from keynote_parser.codec import IWAFile
 
@@ -57,8 +58,14 @@ class KeynoteFile(object):
         identifier = int(archives[0]['header']['identifier'])
         self._slides[identifier] = Slide(archives, **self._slide_flags[identifier])
 
+    def hash_slide(self):
+        with open(self.fname, 'rb') as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+        return "# Presentation hash: %s" % digest
+
     def markdown(self):
-        return "\n\n".join([s.markdown() for s in self.slides])
+        return "\n\n".join([s.markdown() for s in self.slides] +
+                           [self.hash_slide()])
 
 class Slide(object):
     def __init__(self, archives, isHidden=None, depth=None, slide_number=None):
@@ -84,7 +91,7 @@ class Slide(object):
         depth = self.depth or 1
         slidenum = " %d: " % self.slide_number if self.slide_number else " "
         return "\n\n".join([ "#" * depth + slidenum + self.title() ] +
-                           map(str, self._objects[1:]))
+                           list(map(str, self._objects[1:])))
 
     def __repr__(self):
         slidestr = "Slide %d" % self.slide_number if self.slide_number else "Slide"
@@ -109,7 +116,7 @@ class Slide(object):
                 self._text = [obj.encode('utf-8') for obj in archive['objects'][0][self.text_attr] if obj != u'\ufffc']
 
         def __str__(self):
-            return ''.join([para.replace('\n', '\n\n').replace('\xe2\x80\xa8', '\n') for para in self._text])
+            return ''.join([para.replace(b'\n', b'\n\n').replace(b'\xe2\x80\xa8', b'\n').replace(b'\xef\xbf\xbc', b'$eqn$').decode('utf-8') for para in self._text])
 
         @property
         def valid(self):
@@ -138,7 +145,7 @@ class Slide(object):
 def main():
     fname = sys.argv[1]
     knfile = KeynoteFile(fname)
-    print knfile.markdown()
+    print(knfile.markdown())
     
 if __name__ == '__main__':
     main()
