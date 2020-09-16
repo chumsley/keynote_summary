@@ -74,15 +74,28 @@ class Slide(object):
         self.depth = depth
         self.slide_number = slide_number
         self._objects = []
+        self._eqns = []
         self.process()
 
     def process(self):
         identifier = self._archives[0]['header']['identifier']
         self.identifier = int(identifier)
+        num_eqns = 0
+        
         for ar in self._archives:
-            obj = self.Note.build(ar) or self.Text.build(ar) or self.Equation.build(ar)
+            obj = self.Note.build(ar) or self.Text.build(ar)
             if obj:
                 self._objects.append(obj)
+                obj._eqns = self._eqns
+            else:
+                obj = self.Equation.build(ar)
+                if obj:
+                    self._objects.append(obj)
+                    self._eqns.append(obj)
+                    num_eqns = num_eqns + 1
+                    obj.idx = num_eqns
+            # else:
+            #     print("!couldn't process %s" % ar['objects'][0]) #TEST
     
     def title(self):
         return str(self._objects[0]).replace("\n\n", " ")
@@ -90,8 +103,29 @@ class Slide(object):
     def markdown(self):
         depth = self.depth or 1
         slidenum = " %d: " % self.slide_number if self.slide_number else " "
-        return "\n\n".join([ "#" * depth + slidenum + self.title() ] +
-                           list(map(str, self._objects[1:])))
+
+        eqns = self._eqns.copy()
+        objs = self._objects.copy()
+        
+        def cook(obj, eqns=eqns, objs=objs):
+            TAG = b'\xef\xbf\xbc'.decode()
+            para = str(obj)
+            while para.find(TAG) >= 0:
+                s = para.find(TAG)
+                e = s + len(TAG)
+                para = para[0:s] + str(eqns[0]) + para[e:]
+                if eqns[0] in objs:
+                    objs.remove(eqns[0])
+                # else:
+                #     print("%s not in objs?" % str(eqns[0])) #TEST
+                eqns = eqns[1:]
+            return para
+
+        paras = [ "#" * depth + slidenum + cook(self.title()) ]
+        for obj in objs:
+            paras.append(cook(obj))
+
+        return "\n\n".join(paras)
 
     def __repr__(self):
         slidestr = "Slide %d" % self.slide_number if self.slide_number else "Slide"
@@ -112,11 +146,12 @@ class Slide(object):
         
         def __init__(self, archive):
             self._archive = archive
+            self._eqns = None
             if self.text_attr:
                 self._text = [obj.encode('utf-8') for obj in archive['objects'][0][self.text_attr] if obj != u'\ufffc']
 
         def __str__(self):
-            return ''.join([para.replace(b'\n', b'\n\n').replace(b'\xe2\x80\xa8', b'\n').replace(b'\xef\xbf\xbc', b'$eqn$').decode('utf-8') for para in self._text])
+            return ''.join([para.replace(b'\n', b'\n\n').replace(b'\xe2\x80\xa8', b'\n').decode('utf-8') for para in self._text])
 
         @property
         def valid(self):
@@ -138,6 +173,10 @@ class Slide(object):
         
     class Equation(SlideObject):
         text_attr = '[TSWP.EquationInfoArchive.equation_source_text]'
+
+        def __init__(self, archive):
+            super(Slide.Equation, self).__init__(archive)
+            self.idx = 0
 
         def __str__(self):
             return "$%s$" % super(Slide.Equation, self).__str__()
